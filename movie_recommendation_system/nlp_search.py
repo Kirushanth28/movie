@@ -181,18 +181,27 @@ def extract_mood_from_query(query):
 
     query_lower = query.lower()
     detected_tags = []
+    detected_mood_words = []
 
     for mood_word, mapped_tags in MOOD_MAP.items():
         # Phrases such as "bad day" need a simple substring check.
         if " " in mood_word or "-" in mood_word:
-            found = mood_word in query_lower
+            position = query_lower.find(mood_word)
+            found = position != -1
         else:
-            found = re.search(rf"\b{re.escape(mood_word)}\b", query_lower) is not None
+            match = re.search(rf"\b{re.escape(mood_word)}\b", query_lower)
+            found = match is not None
+            position = match.start() if match else -1
 
         if found:
-            for tag in mapped_tags:
-                if tag not in detected_tags:
-                    detected_tags.append(tag)
+            detected_mood_words.append((position, mood_word, mapped_tags))
+
+    # Process mood words in the order the user typed them.
+    detected_mood_words.sort(key=lambda item: item[0])
+    for _position, _mood_word, mapped_tags in detected_mood_words:
+        for tag in mapped_tags:
+            if tag not in detected_tags:
+                detected_tags.append(tag)
 
     return detected_tags
 
