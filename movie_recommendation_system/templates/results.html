@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Movie Recommendation System</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <header class="page-header">
+        <div class="container">
+            <a class="back-link" href="/">Back to Home</a>
+            <h1>{{ title }}</h1>
+            {% if query %}
+            <p class="query-text">Search input: <strong>{{ query }}</strong></p>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="container">
+        {% if filters %}
+        <section class="filters-box">
+            <h2>Applied / Extracted Filters</h2>
+            <div class="filter-list">
+                {% for key, value in filters.items() %}
+                    {% if value %}
+                    <span>{{ key.replace('_', ' ').title() }}: {{ value }}</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if message %}
+        <div class="message-box">
+            {{ message }}
+        </div>
+        {% endif %}
+
+        {% if results %}
+        <section class="results-grid">
+            {% for movie in results %}
+            <article class="movie-card">
+                <div class="movie-card-header">
+                    <h2>{{ movie.title }}</h2>
+                    <span class="rating">⭐ {{ "%.1f"|format(movie.rating) }}</span>
+                </div>
+                <p class="meta">
+                    {{ movie.genre }} | {{ movie.language }} | {{ movie.year }}
+                </p>
+                <p><strong>Director:</strong> {{ movie.director }}</p>
+                <p><strong>Cast:</strong> {{ movie.cast }}</p>
+                <p class="description">{{ movie.description }}</p>
+            </article>
+            {% endfor %}
+        </section>
+        {% endif %}
+    </main>
+</body>
+</html>
