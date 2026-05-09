@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from nlp_search import parse_natural_language_query
+from nlp_search import extract_filters_from_query
 
 
 class DatasetError(Exception):
@@ -23,6 +23,7 @@ class MovieRecommender:
         "director",
         "cast",
         "description",
+        "mood_tags",
     ]
 
     def __init__(self, dataset_path):
@@ -49,7 +50,15 @@ class MovieRecommender:
             missing = ", ".join(missing_columns)
             raise DatasetError(f"Dataset is missing required column(s): {missing}")
 
-        text_columns = ["title", "genre", "language", "director", "cast", "description"]
+        text_columns = [
+            "title",
+            "genre",
+            "language",
+            "director",
+            "cast",
+            "description",
+            "mood_tags",
+        ]
         for column in text_columns:
             self.movies[column] = self.movies[column].fillna("").astype(str)
 
@@ -72,6 +81,8 @@ class MovieRecommender:
             + self.movies["cast"]
             + " "
             + self.movies["description"]
+            + " "
+            + self.movies["mood_tags"]
         )
 
     def _train_model(self):
@@ -90,6 +101,7 @@ class MovieRecommender:
             "director": movie_row["director"],
             "cast": movie_row["cast"],
             "description": movie_row["description"],
+            "mood_tags": movie_row["mood_tags"],
         }
 
     def get_all_movies(self):
@@ -151,6 +163,31 @@ class MovieRecommender:
 
         return recommendations
 
+    def recommend_by_mood(self, mood_filters, top_n=5):
+        """
+        Recommend movies by mood tags.
+
+        If no movie matches the detected mood tags, the system returns general
+        high-rated movies so the user still receives useful recommendations.
+        """
+        results = self.movies.copy()
+
+        if mood_filters:
+            safe_tags = [str(tag).lower() for tag in mood_filters if str(tag).strip()]
+            if safe_tags:
+                mood_pattern = "|".join(safe_tags)
+                results = results[
+                    results["mood_tags"]
+                    .str.lower()
+                    .str.contains(mood_pattern, na=False, regex=True)
+                ]
+
+        if results.empty:
+            results = self.movies.copy()
+
+        results = results.sort_values(by=["rating", "year"], ascending=[False, False])
+        return [self._movie_to_dict(row) for _, row in results.head(top_n).iterrows()]
+
     def filter_movies(self, filters, limit=None):
         """Filter movies using manual form values or NLP-extracted values."""
         filtered_movies = self.movies.copy()
@@ -201,5 +238,5 @@ class MovieRecommender:
         return [self._movie_to_dict(row) for _, row in filtered_movies.iterrows()]
 
     def search_by_query(self, query, limit=None):
-        filters = parse_natural_language_query(query)
+        filters = extract_filters_from_query(query)
         return self.filter_movies(filters, limit=limit), filters

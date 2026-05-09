@@ -17,6 +17,7 @@ The application is offline and uses a local CSV dataset. It does not require a d
   - Cosine Similarity
 - Movie recommendation by title
 - Natural language movie search
+- Mood-based natural language movie recommendation
 - Manual filter search
 - JSON API endpoints for movies, recommendations, and NLP search
 - Clear no-result messages and dataset error handling
@@ -69,6 +70,7 @@ The CSV file must contain these columns:
 - `director`
 - `cast`
 - `description`
+- `mood_tags`
 
 ## Installation Steps
 
@@ -134,6 +136,12 @@ Try these in the natural language search form:
 - Show sci-fi movies before 2020
 - Recommend movies by director Christopher Nolan
 - Find movies starring Keanu Reeves
+- I am tired and sad, suggest me a few movies
+- I feel stressed, recommend relaxing movies
+- I am bored, suggest something exciting
+- I had a bad day, recommend comforting movies
+- I want to cry, recommend emotional movies
+- I am with family, recommend family movies
 
 ## API Endpoints
 
@@ -144,6 +152,7 @@ Try these in the natural language search form:
 | GET | `/` | Home page |
 | POST | `/recommend` | Submit movie title recommendation form |
 | POST | `/search` | Submit natural language search form |
+| POST | `/mood-recommend` | Submit mood-based recommendation form |
 | POST | `/filter` | Submit manual filter form |
 
 ### JSON APIs
@@ -153,6 +162,7 @@ Try these in the natural language search form:
 | GET | `/api/movies` | Return all movies |
 | GET | `/api/recommend/{movie_title}` | Return top 5 recommendations for a movie title |
 | GET | `/api/search?query=` | Return NLP search results |
+| GET | `/api/mood-search?query=` | Return mood-based recommendations |
 
 Example:
 
@@ -160,12 +170,18 @@ Example:
 http://127.0.0.1:8000/api/search?query=Find Korean thriller movies after 2015
 ```
 
+Mood-based API example:
+
+```text
+http://127.0.0.1:8000/api/mood-search?query=I am tired and sad suggest movies
+```
+
 ## How the Recommendation Model Works
 
 1. The application reads `dataset/movies.csv` using pandas.
 2. It checks whether all required columns exist.
 3. Missing text values are replaced with empty strings.
-4. The system combines title, genre, language, director, cast, and description into one text feature.
+4. The system combines title, genre, language, director, cast, description, and mood tags into one text feature.
 5. TF-IDF converts the combined text into numeric vectors.
 6. Cosine similarity measures how similar each movie is to every other movie.
 7. When a user enters a movie title, the system returns the top 5 most similar movies.
@@ -195,6 +211,41 @@ director = Christopher Nolan
 ```
 
 Then it filters the movie dataset using that extracted value.
+
+## Mood-Based Recommendation Feature
+
+The system can understand simple mood-based prompts and recommend movies according to the user's emotional state.
+
+The NLP module detects emotional words from the user query and maps them to mood tags stored in `dataset/movies.csv`. The recommender then searches the `mood_tags` column and returns the highest-rated matching movies.
+
+For example:
+
+```text
+I am tired and sad, suggest me a few movies
+```
+
+The system detects:
+
+```text
+tired, relaxing, comfort, sad, emotional, feel-good
+```
+
+Then it recommends relaxing, comforting, emotional, or feel-good movies. If no mood tag is detected or no exact match is found, the system falls back to general high-rated movies.
+
+Mood prompts work in two places:
+
+1. The dedicated Mood-Based Recommendation form.
+2. The existing Natural Language Search form, because the app detects mood intent before normal filter search.
+
+Example mood queries:
+
+- I am tired and sad, suggest me a few movies
+- I feel stressed, recommend relaxing movies
+- I am bored, suggest something exciting
+- I feel lonely, recommend some feel-good movies
+- I had a bad day, recommend comforting movies
+- I want to cry, recommend emotional movies
+- I am with family, recommend family movies
 
 ## Future Enhancements
 

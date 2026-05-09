@@ -38,17 +38,33 @@
 
             <article class="form-card">
                 <h2>Natural Language Search</h2>
-                <p>Type a sentence. The system extracts genre, language, year, rating, actor, and director filters.</p>
+                <p>Type a sentence. The system extracts filters or detects mood-based recommendation intent.</p>
                 <form action="/search" method="post">
                     <label for="query">Search Query</label>
                     <textarea
                         id="query"
                         name="query"
                         rows="4"
-                        placeholder="Show me English action movies after 2010 with high rating"
+                        placeholder="Show me action movies after 2010 OR I feel sad, recommend movies"
                         required
                     ></textarea>
                     <button type="submit">Search with NLP</button>
+                </form>
+            </article>
+
+            <article class="form-card">
+                <h2>Mood-Based Recommendation</h2>
+                <p>Describe how you feel and the system will recommend movies that match your emotional state.</p>
+                <form action="/mood-recommend" method="post">
+                    <label for="user_query">How are you feeling?</label>
+                    <textarea
+                        id="user_query"
+                        name="user_query"
+                        rows="4"
+                        placeholder="Example: I am tired and sad, suggest me a few movies"
+                        required
+                    ></textarea>
+                    <button type="submit">Recommend by Mood</button>
                 </form>
             </article>
 
@@ -104,6 +120,8 @@
                 <li>Find Korean thriller movies after 2015</li>
                 <li>Show sci-fi movies before 2020</li>
                 <li>Recommend movies by director Christopher Nolan</li>
+                <li>I feel stressed, recommend relaxing movies</li>
+                <li>I had a bad day, recommend comforting movies</li>
             </ul>
         </section>
     </main>
