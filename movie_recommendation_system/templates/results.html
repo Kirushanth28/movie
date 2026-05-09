@@ -31,6 +31,17 @@
         </section>
         {% endif %}
 
+        {% if mood_tags %}
+        <section class="filters-box">
+            <h2>Detected Mood Tags</h2>
+            <div class="filter-list">
+                {% for mood_tag in mood_tags %}
+                <span>{{ mood_tag }}</span>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
         {% if message %}
         <div class="message-box">
             {{ message }}

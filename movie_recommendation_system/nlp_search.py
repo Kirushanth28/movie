@@ -30,6 +30,41 @@ LANGUAGE_KEYWORDS = [
     "spanish",
 ]
 
+# Mood words are mapped to tags stored in dataset/movies.csv.
+# A single feeling can map to several useful recommendation tags.
+MOOD_MAP = {
+    "sad": ["sad", "emotional", "comfort", "feel-good"],
+    "upset": ["sad", "comfort", "feel-good"],
+    "depressed": ["sad", "comfort", "feel-good"],
+    "tired": ["tired", "relaxing", "comfort"],
+    "stressed": ["stressed", "relaxing", "comfort"],
+    "stress": ["stressed", "relaxing", "comfort"],
+    "anxious": ["anxious", "relaxing", "comfort"],
+    "anxiety": ["anxious", "relaxing", "comfort"],
+    "bored": ["bored", "exciting", "comedy"],
+    "boring": ["bored", "exciting", "comedy"],
+    "lonely": ["lonely", "feel-good", "romantic", "comfort"],
+    "happy": ["happy", "comedy", "feel-good"],
+    "excited": ["exciting", "adventure", "action"],
+    "bad day": ["comfort", "feel-good", "comedy"],
+    "motivated": ["motivated", "inspiring"],
+    "motivation": ["motivated", "inspiring"],
+    "motivational": ["motivated", "inspiring"],
+    "inspired": ["inspiring", "motivated"],
+    "family": ["family", "feel-good", "animation"],
+    "cry": ["sad", "emotional", "romantic"],
+    "romantic": ["romantic", "emotional"],
+    "relax": ["relaxing", "comfort"],
+    "relaxing": ["relaxing", "comfort"],
+    "calm": ["relaxing", "comfort"],
+    "funny": ["comedy", "happy", "feel-good"],
+    "laugh": ["comedy", "happy", "feel-good"],
+    "feel-good": ["feel-good", "comfort", "happy"],
+    "comforting": ["comfort", "feel-good"],
+}
+
+MOOD_INTENT_WORDS = list(MOOD_MAP.keys())
+
 
 def _clean_person_name(name):
     """Remove trailing filter words from a director or actor name."""
@@ -60,7 +95,7 @@ def _clean_person_name(name):
     return cleaned_name.title() if cleaned_name else None
 
 
-def parse_natural_language_query(query):
+def extract_filters_from_query(query):
     """
     Extract simple movie filters from a natural language search query.
 
@@ -126,3 +161,59 @@ def parse_natural_language_query(query):
         filters["actor"] = _clean_person_name(actor_match.group(1))
 
     return filters
+
+
+def parse_natural_language_query(query):
+    """Backward-compatible name for the filter extraction function."""
+    return extract_filters_from_query(query)
+
+
+def extract_mood_from_query(query):
+    """
+    Detect emotional words in the query and return unique mood tags.
+
+    Example:
+    "I am tired and sad" becomes
+    ["tired", "relaxing", "comfort", "sad", "emotional", "feel-good"].
+    """
+    if not query:
+        return []
+
+    query_lower = query.lower()
+    detected_tags = []
+
+    for mood_word, mapped_tags in MOOD_MAP.items():
+        # Phrases such as "bad day" need a simple substring check.
+        if " " in mood_word or "-" in mood_word:
+            found = mood_word in query_lower
+        else:
+            found = re.search(rf"\b{re.escape(mood_word)}\b", query_lower) is not None
+
+        if found:
+            for tag in mapped_tags:
+                if tag not in detected_tags:
+                    detected_tags.append(tag)
+
+    return detected_tags
+
+
+def detect_user_intent(query):
+    """
+    Decide which type of search the user wants.
+
+    Mood words are handled first so the existing natural language box can also
+    recommend movies for emotional prompts like "I feel stressed".
+    """
+    if not query:
+        return "filter_search"
+
+    mood_tags = extract_mood_from_query(query)
+    if mood_tags:
+        return "mood_recommendation"
+
+    query_lower = query.lower()
+    title_words = ["similar to", "like movie", "like the movie", "recommend like"]
+    if any(words in query_lower for words in title_words):
+        return "title_recommendation"
+
+    return "filter_search"

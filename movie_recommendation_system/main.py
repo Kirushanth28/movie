@@ -6,6 +6,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from nlp_search import (
+    detect_user_intent,
+    extract_filters_from_query,
+    extract_mood_from_query,
+)
 from recommender import DatasetError, MovieRecommender
 
 
@@ -55,7 +60,15 @@ def _home_context(request):
     }
 
 
-def _results_context(request, title, results, message=None, query=None, filters=None):
+def _results_context(
+    request,
+    title,
+    results,
+    message=None,
+    query=None,
+    filters=None,
+    mood_tags=None,
+):
     return {
         "request": request,
         "title": title,
@@ -63,6 +76,7 @@ def _results_context(request, title, results, message=None, query=None, filters=
         "message": message,
         "query": query,
         "filters": filters,
+        "mood_tags": mood_tags,
     }
 
 
@@ -94,8 +108,27 @@ async def recommend(request: Request, movie_title: str = Form(...)):
 @app.post("/search", response_class=HTMLResponse)
 async def search(request: Request, query: str = Form(...)):
     """Handle natural language movie search form submission."""
-    results, filters = recommender.search_by_query(query)
+    user_intent = detect_user_intent(query)
     message = None
+
+    if user_intent == "mood_recommendation":
+        mood_tags = extract_mood_from_query(query)
+        results = recommender.recommend_by_mood(mood_tags, top_n=5)
+
+        if not mood_tags:
+            message = "No mood words were detected, so high-rated movies are shown."
+
+        context = _results_context(
+            request=request,
+            title="Mood-Based Movie Recommendations",
+            results=results,
+            message=message,
+            query=query,
+            mood_tags=mood_tags,
+        )
+        return templates.TemplateResponse(request, "results.html", context)
+
+    results, filters = recommender.search_by_query(query)
 
     if not results:
         message = "No movies matched your natural language search."
@@ -107,6 +140,27 @@ async def search(request: Request, query: str = Form(...)):
         message=message,
         query=query,
         filters=filters,
+    )
+    return templates.TemplateResponse(request, "results.html", context)
+
+
+@app.post("/mood-recommend", response_class=HTMLResponse)
+async def mood_recommend(request: Request, user_query: str = Form(...)):
+    """Handle the dedicated mood-based recommendation form."""
+    mood_tags = extract_mood_from_query(user_query)
+    results = recommender.recommend_by_mood(mood_tags, top_n=5)
+    message = None
+
+    if not mood_tags:
+        message = "No mood words were detected, so high-rated movies are shown."
+
+    context = _results_context(
+        request=request,
+        title="Mood-Based Movie Recommendations",
+        results=results,
+        message=message,
+        query=user_query,
+        mood_tags=mood_tags,
     )
     return templates.TemplateResponse(request, "results.html", context)
 
@@ -181,5 +235,23 @@ async def api_search(query: str = Query(..., description="Natural language movie
 
     if not results:
         response["message"] = "No movies matched your search query."
+
+    return response
+
+
+@app.get("/api/mood-search")
+async def api_mood_search(query: str = Query(..., description="Mood-based movie query")):
+    """Return mood-based movie recommendations as JSON."""
+    mood_tags = extract_mood_from_query(query)
+    recommendations = recommender.recommend_by_mood(mood_tags, top_n=5)
+    response = {
+        "query": query,
+        "detected_mood_tags": mood_tags,
+        "count": len(recommendations),
+        "recommendations": recommendations,
+    }
+
+    if not mood_tags:
+        response["message"] = "No mood words were detected, so high-rated movies are shown."
 
     return response
