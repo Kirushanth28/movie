@@ -69,7 +69,7 @@ def _results_context(request, title, results, message=None, query=None, filters=
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """Render the home page with all three search forms."""
-    return templates.TemplateResponse("index.html", _home_context(request))
+    return templates.TemplateResponse(request, "index.html", _home_context(request))
 
 
 @app.post("/recommend", response_class=HTMLResponse)
@@ -88,7 +88,7 @@ async def recommend(request: Request, movie_title: str = Form(...)):
         message=message,
         query=movie_title,
     )
-    return templates.TemplateResponse("results.html", context)
+    return templates.TemplateResponse(request, "results.html", context)
 
 
 @app.post("/search", response_class=HTMLResponse)
@@ -108,7 +108,7 @@ async def search(request: Request, query: str = Form(...)):
         query=query,
         filters=filters,
     )
-    return templates.TemplateResponse("results.html", context)
+    return templates.TemplateResponse(request, "results.html", context)
 
 
 @app.post("/filter", response_class=HTMLResponse)
@@ -142,7 +142,7 @@ async def filter_movies(
         message=message,
         filters=filters,
     )
-    return templates.TemplateResponse("results.html", context)
+    return templates.TemplateResponse(request, "results.html", context)
 
 
 @app.get("/api/movies")
